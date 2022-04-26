@@ -28,7 +28,7 @@ def createVisitsCSV():
     start_date = visitsTXT[0].get("visit_date:")
     end_date = visitsTXT[len(visitsTXT) - 1].get("visit_date:")
 
-    data = Daily('10637', start_date, end_date)
+    data = Daily('03772', start_date, end_date)#10637
     data = data.fetch()
 
     with open('data/visits.csv', 'w', newline='') as visitsOutCSV:
@@ -95,5 +95,5 @@ def graphmlFromAdjList():
 
 
 if __name__ == '__main__':
-    createVisitsCSV();
+    createVisitsCSV()
     print("task finished")

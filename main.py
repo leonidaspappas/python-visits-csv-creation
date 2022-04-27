@@ -1,10 +1,13 @@
 import csv
+import http.client
 import json
 from datetime import datetime
+import pandas as pd
 
 import networkx as nx
 from meteostat import Stations, Daily
-from time import gmtime, strftime, time
+import numpy as np
+import pandas as pd
 
 start_date = datetime(2010, 1, 1)
 end_date = datetime(2010, 12, 31)
@@ -13,7 +16,7 @@ end_date = datetime(2010, 12, 31)
 def read_visitsTXT():
     with open('data/visits.txt') as f:
         visits = f.readlines()
-    ret = [];
+    ret = []
     for x in visits:
         if x.strip():
             lineJson = json.loads(x)
@@ -25,11 +28,28 @@ def read_visitsTXT():
 def createVisitsCSV():
     visitsTXT = read_visitsTXT()
     visitsTXT.sort(key=lambda x: x["visit_date:"])
-    start_date = visitsTXT[0].get("visit_date:")
-    end_date = visitsTXT[len(visitsTXT) - 1].get("visit_date:")
+    start_date = visitsTXT[0].get("visit_date:").split()[0]
+    end_date = visitsTXT[len(visitsTXT) - 1].get("visit_date:").split()[0]
+    station = '03772'
+    #data = Daily('03772', start_date, end_date)#10637
+    #data = data.fetch()
 
-    data = Daily('03772', start_date, end_date)#10637
-    data = data.fetch()
+    conn = http.client.HTTPSConnection("meteostat.p.rapidapi.com")
+
+    headers = {
+        'X-RapidAPI-Host': "meteostat.p.rapidapi.com",
+        'X-RapidAPI-Key': "125ce90f05msha3a2dce42f68767p117bd1jsn89b9b0dbdadd"
+    }
+    print("/stations/hourly?station="+station+"&start="+start_date+"&end="+end_date)
+    conn.request("GET", "/stations/daily?station="+station+"&start="+start_date+"&end="+end_date,
+                 headers=headers)
+
+    res = conn.getresponse()
+    data1 = json.loads(res.read())
+    data2 = data1['data']
+    data = pd.DataFrame(data2, columns=["date","tavg", "tmin", "tmax", "prcp", "snow", "wspd", "wpgt", "pres", "tsun"]).set_index('date', drop=False)
+    #print(df.to_string())
+    #print(data)
 
     with open('data/visits.csv', 'w', newline='') as visitsOutCSV:
         writer = csv.DictWriter(visitsOutCSV,
@@ -41,7 +61,7 @@ def createVisitsCSV():
             writer.writerow({'id': i, 'visit_id': line.get("visit_id"), 'visit_date': line.get("visit_date:"),
                              'engineer_skill_level': line.get("engineer_skill_level").split("LEVEL")[1],
                              'engineer_note': line.get("engineer_note"), 'outcome': line.get("outcome"),
-                             'task_id': line.get("task_id"), 'tavg': data.loc[line.get("visit_date:")]['tavg']})
+                             'task_id': line.get("task_id"), 'tavg': data.loc[line.get("visit_date:").split()[0]]['tavg']})
             i = i + 1
 
     duplicates = []
